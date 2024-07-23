@@ -1,0 +1,7 @@
+/target
+/src/testing-assets/
+/src/testing-assets/*
+xl/
+.txt
+.idea
+.idea/
