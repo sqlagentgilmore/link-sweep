@@ -6,6 +6,7 @@ use indicatif::ProgressBar;
 use walkdir::DirEntry;
 
 pub fn check_file(path: &Path) -> Option<PathBuf> {
+    
     // open options (just checking so write is disabled)
     let file = OpenOptions::new()
         .read(true)

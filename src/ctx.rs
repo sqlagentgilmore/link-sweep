@@ -47,6 +47,15 @@ pub struct Context {
     )]
     pub depth: Option<usize>,
     
+    /// size cap
+    #[arg(
+        short = 's',
+        long = "size",
+        required = false,
+        help = "cap size of a file for search"
+    )]
+    pub size: Option<u64>,
+    
 }
 
 impl Context {
