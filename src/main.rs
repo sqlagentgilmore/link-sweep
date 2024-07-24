@@ -2,13 +2,13 @@ mod ctx;
 mod search;
 mod zip_dir;
 
-use crate::search::file_list;
+use crate::search::determine_files_with_links;
 use crate::zip_dir::{extract_dir, get_meta, set_meta, zip_dir, MetaApply};
 use ctx::Context;
 use std::io::{stdin, BufWriter, Write};
 use std::path::{Path, PathBuf};
 use indicatif::{ProgressBar, ProgressStyle};
-use walkdir::WalkDir;
+use walkdir::{DirEntry, WalkDir};
 
 #[cfg(target_os = "windows")]
 pub fn handle(files: Vec<PathBuf>, compression_level: i64) {
@@ -59,9 +59,33 @@ pub fn output_list(list: &[PathBuf], f: &mut std::fs::File) {
     }
 }
 
-fn count_files(path: Option<PathBuf>) -> u64 {
-    if let Some(path) = path {
-        WalkDir::new(path).into_iter().filter_map(Result::ok).count() as u64 + 1
+fn get_searchable_files(c: &Context) -> Vec<DirEntry> {
+    if let Some(path) = c.dir.as_ref() {
+        if let Some(depth) = c.depth {
+            WalkDir::new(path).max_depth(depth).same_file_system(true).into_iter().filter_map(Result::ok).filter_map(|file| {
+                if let Some(exclude_pattern) = c.exclude.as_ref() { 
+                    if file.path().to_str().unwrap().to_lowercase().contains(exclude_pattern.to_lowercase().as_str()).eq(&false) {
+                        Some(file)
+                    } else {
+                        None
+                    }
+                } else { 
+                    Some(file) 
+                }
+            }).collect()
+        } else {
+            WalkDir::new(path).same_file_system(true).into_iter().filter_map(Result::ok).filter_map(|file| {
+                if let Some(exclude_pattern) = c.exclude.as_ref() {
+                    if file.path().to_str().unwrap().to_lowercase().contains(exclude_pattern.to_lowercase().as_str()).eq(&false) {
+                        Some(file)
+                    } else {
+                        None
+                    }
+                } else {
+                    Some(file)
+                }
+            }).collect()
+        }
     } else {
         panic!("failed to get count from directory")
     }
@@ -71,16 +95,18 @@ fn count_files(path: Option<PathBuf>) -> u64 {
 /// delete externalLinks from workbook.xml
 /// delete externalLinks folder entirely
 fn main() {
+    
     let ctx = Context::new();
-
-    let mut pb = ProgressBar::new(count_files(ctx.dir.clone()));
+    let files = get_searchable_files(&ctx);
+    let mut pb = ProgressBar::new(files.len() as u64);
+    
     pb.set_style(ProgressStyle::default_bar()
         .template("{msg}\n{bar:40} {pos}/{len}")
         .unwrap()
         .progress_chars("##-"));
     
     // parse directories and get all necessary files
-    let list = file_list(ctx.clone(), &mut pb);
+    let list = determine_files_with_links(files, &mut pb);
     
     // clear load
     pb.finish_and_clear();

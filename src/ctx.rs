@@ -28,6 +28,25 @@ pub struct Context {
         help = "output filepath for list of files"
     )]
     pub output: Option<PathBuf>,
+
+    /// exclude expr
+    #[arg(
+        short = 'e',
+        long = "exclude",
+        required = false,
+        help = "exclude by pattern"
+    )]
+    pub exclude: Option<String>,
+
+    /// depth
+    #[arg(
+        short = 'd',
+        long = "depth",
+        required = false,
+        help = "traversal depth"
+    )]
+    pub depth: Option<usize>,
+    
 }
 
 impl Context {
