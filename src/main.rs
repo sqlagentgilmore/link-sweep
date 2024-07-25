@@ -12,6 +12,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 use walkdir::{DirEntry, WalkDir};
 
 #[cfg(target_os = "windows")]
+#[no_mangle]
 pub fn handle(files: Vec<PathBuf>, compression_level: i64) {
 
     let pb = ProgressBar::new(files.len() as u64);
@@ -45,6 +46,7 @@ pub fn handle(files: Vec<PathBuf>, compression_level: i64) {
     }
 }
 
+#[no_mangle]
 pub fn output_list(list: &[PathBuf], f: &mut std::fs::File) {
     let mut buffered_writer = BufWriter::new(f);
     buffered_writer
@@ -60,14 +62,15 @@ pub fn output_list(list: &[PathBuf], f: &mut std::fs::File) {
     }
 }
 
+#[no_mangle]
 fn get_searchable_files(c: &Context) -> Vec<DirEntry> {
     if let Some(path) = c.dir.as_ref() {
         
         // even if no param is passed we still want to cap at a 1gb
-        let max_file_size: u64 = c.size.unwrap_or(1073741824);
+        let max_file_size: u64 = c.size.unwrap_or(1073741824 / 1024) * 1024;
         
         let wd = {
-            if let Some(depth) = c.depth {
+            if let Some(depth) = c.levels {
                 WalkDir::new(path).max_depth(depth)
             } else {
                 WalkDir::new(path)
@@ -75,14 +78,38 @@ fn get_searchable_files(c: &Context) -> Vec<DirEntry> {
         };
         
         wd.same_file_system(true).into_iter().filter_map(Result::ok).filter_map(|file| {
+            // remove records with too large a file size
             if file.metadata().as_ref().unwrap().file_size() >= max_file_size {
                 None
             } else if let Some(exclude_pattern) = c.exclude.as_ref() {
+                // if the file DOES NOT (false) contain the pattern to be EXCLUDED include it
                 if file.path().to_str().unwrap().to_lowercase().contains(exclude_pattern.to_lowercase().as_str()).eq(&false) {
-                    Some(file)
+                    if let Some(include) = c.include.as_ref() {
+                        // if the file DOES (true) contain the pattern to be INCLUDED include it
+                        if file.path().to_str().unwrap().to_lowercase().contains(include.to_lowercase().as_str()).eq(&true) {
+                            Some(file) 
+                        // the file DOES NOT contain what should be INCLUDED exclude it
+                        } else {
+                            None
+                        } 
+                    // no included clause provided so the result of the exclusion holds
+                    } else {
+                        Some(file)
+                    }
+                // failed exclusion clause no need to check inclusion
                 } else {
                     None
                 }
+            // no Exclusion clause provided, still need to check for Inclusion clause
+            } else if let Some(include) = c.include.as_ref() {
+                // if the file DOES (true) contain the pattern to be INCLUDED include it
+                if file.path().to_str().unwrap().to_lowercase().contains(include.to_lowercase().as_str()).eq(&true) {
+                    Some(file)
+                    // the file DOES NOT contain what should be INCLUDED exclude it
+                } else {
+                    None
+                }
+                // no included or excluded clause provided so the result of the exclusion holds
             } else {
                 Some(file)
             }

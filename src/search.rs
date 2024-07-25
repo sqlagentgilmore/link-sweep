@@ -5,15 +5,16 @@ use std::path::{Path, PathBuf};
 use indicatif::ProgressBar;
 use walkdir::DirEntry;
 
+#[no_mangle]
 pub fn check_file(path: &Path) -> Option<PathBuf> {
-    
+
     // open options (just checking so write is disabled)
     let file = OpenOptions::new()
         .read(true)
         .write(false)
         .open(path)
         .expect("failed to open file");
-
+    
     // grab the zip folder contents or return None if there is an error
     let zip_archive = match zip::ZipArchive::new(file) {
         Ok(val) => val,

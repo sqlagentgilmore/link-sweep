@@ -38,23 +38,32 @@ pub struct Context {
     )]
     pub exclude: Option<String>,
 
-    /// depth
+    /// levels
     #[arg(
-        short = 'd',
-        long = "depth",
+        short = 'l',
+        long = "levels",
         required = false,
         help = "traversal depth"
     )]
-    pub depth: Option<usize>,
+    pub levels: Option<usize>,
     
-    /// size cap
+    /// size cap in megabytes
     #[arg(
         short = 's',
         long = "size",
         required = false,
-        help = "cap size of a file for search"
+        help = "size cap in MB (ie for 1MB use 1 instead 1024 ) of a file for search"
     )]
     pub size: Option<u64>,
+    
+    /// inclusion
+    #[arg(
+        short = 'i',
+        long = "include",
+        required = false,
+        help = "only include files with this pattern"
+    )]
+    pub include: Option<String>,
     
 }
 
